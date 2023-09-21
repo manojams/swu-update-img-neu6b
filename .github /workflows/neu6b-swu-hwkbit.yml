@@ -20,11 +20,14 @@ jobs:
           export LC_ALL="en_US.UTF-8"
           pwd
           ls
+          
 
 # Check if the neu2aYctBuild directory exists in the runner's workspace
       - name: Check if neu2aYctBuild directory exists or create it
         run: |
             cd "${{ runner.workspace }}/../../../.."
             pwd
+            ls
+            cd ../..
             ls
           fi
