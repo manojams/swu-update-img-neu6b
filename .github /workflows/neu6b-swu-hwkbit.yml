@@ -30,6 +30,7 @@ jobs:
             cd "${{ runner.workspace }}/neu2aYctBuild"
             pwd
             ls
+            ls
           fi
 
       - name: Clone Yocto Poky repository
