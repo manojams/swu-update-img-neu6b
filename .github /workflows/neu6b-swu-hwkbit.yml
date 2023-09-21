@@ -1,0 +1,128 @@
+name: neu2a yocto Build
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    name: neu2a yocto Build
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Prepare workspace
+        id: prepare_workspace
+        run: |
+          export LC_ALL="en_US.UTF-8"
+          pwd
+          ls
+
+# Check if the neu2aYctBuild directory exists in the runner's workspace
+      - name: Check if neu2aYctBuild directory exists or create it
+        run: |
+          if [ ! -d "${{ runner.workspace }}/neu2aYctBuild" ]; then
+            mkdir "${{ runner.workspace }}/neu2aYctBuild"
+          else
+            cd "${{ runner.workspace }}/neu2aYctBuild"
+            pwd
+            ls
+          fi
+
+      - name: Clone Yocto Poky repository
+        run: |
+          cd ${{ runner.workspace }}/neu2aYctBuild
+          if [ ! -d "poky" ]; then
+            git clone git://git.yoctoproject.org/poky.git
+          fi
+
+      - name: Clone bitbake repository
+        run: |
+          cd ${{ runner.workspace }}/neu2aYctBuild
+          if [ ! -d "bitbake" ]; then
+            git clone git://git.openembedded.org/bitbake -b master 
+          fi
+
+      - name: Clone openembedded-core repository
+        run: |
+          cd ${{ runner.workspace }}/neu2aYctBuild
+          if [ ! -d "openembedded-core" ]; then
+            git clone git://git.openembedded.org/openembedded-core -b kirkstone  
+          fi
+
+      - name: Clone meta-arm repository
+        run: |
+          cd ${{ runner.workspace }}/neu2aYctBuild
+          if [ ! -d "meta-arm" ]; then
+            git clone git://git.yoctoproject.org/meta-arm -b kirkstone  
+          fi
+
+      - name: Clone meta-openembedded repository
+        run: |
+          cd ${{ runner.workspace }}/neu2aYctBuild
+          if [ ! -d "meta-openembedded" ]; then
+            git clone git://git.openembedded.org/meta-openembedded -b kirkstone  
+          fi
+
+      - name: Clone meta-neu6b repo
+        run: | 
+          cd ${{ runner.workspace }}/neu2aYctBuild
+          if [ ! -d "meta-neu6b" ]; then
+            git clone https://github.com/manojams/meta-neu6b.git -b kirkstone
+          else
+            cd meta-neu6b
+            ls
+            git pull --rebase
+          fi
+
+
+      - name: setup the local.conf
+        run: |
+          cd ${{ runner.workspace }}/neu2aYctBuild
+          source openembedded-core/oe-init-build-env build
+          echo 'MACHINE ??= "neu2a-io"' >> conf/local.conf
+
+      - name: Update bblayers.conf
+        run: |
+          cd ${{ runner.workspace }}/neu2aYctBuild
+          source openembedded-core/oe-init-build-env build
+          export LC_ALL="en_US.UTF-8"
+          bitbake-layers add-layer ../openembedded-core/meta
+          bitbake-layers add-layer ../meta-arm/meta-arm-toolchain
+          bitbake-layers add-layer ../meta-arm/meta-arm
+          bitbake-layers add-layer ../meta-neu6b
+          bitbake-layers add-layer ../meta-openembedded/meta-oe
+          bitbake-layers add-layer ../meta-openembedded/meta-python
+          bitbake-layers add-layer ../meta-openembedded/meta-networking
+          
+      - name: bitbake uboot-neu2a 
+        run: |
+          cd ${{ runner.workspace }}/neu2aYctBuild
+          source openembedded-core/oe-init-build-env build
+          export LC_ALL="en_US.UTF-8"
+          bitbake u-boot
+          
+      - name: bitbake linux-kernel 
+        run: |
+          cd ${{ runner.workspace }}/neu2aYctBuild
+          source openembedded-core/oe-init-build-env build
+          export LC_ALL="en_US.UTF-8"
+          bitbake linux-kernel
+            
+      - name: bitbake core-image-minimal
+        run: |
+          cd ${{ runner.workspace }}/neu2aYctBuild
+          source openembedded-core/oe-init-build-env build
+          export LC_ALL="en_US.UTF-8"
+          bitbake core-image-minimal    
+                
+      - name: Upload output artifacts
+        uses: xresloader/upload-to-github-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          file: ${{ runner.workspace }}/neu2aYctBuild/build/tmp-glibc/deploy/images/neu2a-io/
+          draft: false
